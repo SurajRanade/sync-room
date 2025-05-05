@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AuthModule } from "./auth/auth.module";
+import { ChatsModule } from "./modules/chats/chats.module";
+import { Chat } from "./modules/chats/entities/chat.entity";
 import { ConnectionRequestModule } from "./modules/connection-request/connection-request.module";
 import { ConnectionRequest } from "./modules/connection-request/entities/connection-request.entity";
 import { InternalStatus } from "./modules/internal-status-master/entities/internal-status-master.entity";
@@ -15,10 +17,13 @@ import { UserConnectionsModule } from "./modules/user-connections/user-connectio
 import { User } from "./modules/user/entities/user.entity";
 import { UserModule } from "./modules/user/user.module";
 
-let modules = [UserModule,AuthModule,ConnectionRequestModule,UserConnectionsModule,InternalStatusTypeMasterModule,InternalStatusMasterModule];
+let modules = [UserModule,AuthModule,ConnectionRequestModule
+  ,UserConnectionsModule,InternalStatusTypeMasterModule,InternalStatusMasterModule,
+  ChatsModule
+];
 
 let entities = [
-  User,UserConnection,ConnectionRequest,InternalStatusType,InternalStatus
+  User,UserConnection,ConnectionRequest,InternalStatusType,InternalStatus,Chat
 ];
 
 @Module({

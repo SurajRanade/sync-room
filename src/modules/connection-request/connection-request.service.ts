@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { REQUEST_STATUS } from '../../enums/enum';
 import { InternalStatus } from '../internal-status-master/entities/internal-status-master.entity';
+import { CreateUserConnectionDto } from '../user-connections/dto/create-user-connection.dto';
 import { UserConnectionsService } from '../user-connections/user-connections.service';
 import { User } from '../user/entities/user.entity';
 import { CreateConnectionRequestDto, UserDto } from './dto/create-connection-request.dto';
@@ -67,7 +68,6 @@ export class ConnectionRequestService {
     const userId = user?.userId; // Make sure your UserDto has an id property
     const email = user?.email;
 
-    console.log('Logged-in user info:', { userId, email });
 
     return { userId, email };
   }
@@ -76,6 +76,10 @@ export class ConnectionRequestService {
 
   async acceptConnectionRequest(requestId: number) {
     let request = await this.connectionRequestRepository.findOne({
+      relations:{
+        sender:true,
+        receiver:true
+      },
       where: {
         requestId: requestId
       }
@@ -92,6 +96,8 @@ export class ConnectionRequestService {
     })
 
     if (result.affected > 0) {
+      //If Request is accepted create connection 
+      let connection = await this.createConnection(request) 
       return {
         status: 'Success'
       }
@@ -124,11 +130,49 @@ export class ConnectionRequestService {
 
   }
 
+  async createConnection(connectionRequest:ConnectionRequest){
+    let senderId = connectionRequest.sender.userId;
+    let receiverId = connectionRequest.receiver.userId;
+
+    if(senderId && receiverId ){
+      let createUserConnectionDto:CreateUserConnectionDto={
+        userId: senderId,
+        connectedUserId: receiverId
+      }
+      await this.userConnectionsService.addConnections(createUserConnectionDto)
+    }
+  }
 
 
+//This Functions return the 
+  async getUsersPendingRequest(user:UserDto){
+    let userId = user.userId
+    let usersPendingRequest =await this.connectionRequestRepository.find({
+      relations:{
+        sender:true
+      },
+      where:{
+        receiver:{
+          userId:userId
+        },
+        requestStatus:{
+          internalStatusId:REQUEST_STATUS.Pending
+        }
+      },
+      select:{
+        requestId:true,
+        createdAt:true,
+        updatedAt:true,
+        sender:{
+          userId:true,
+          name:true,
+          status:true,
+          avatarUrl:true,
+          email:true
+        }
+      }
+    })
 
-
-
-
-
+    return usersPendingRequest
+  }
 }

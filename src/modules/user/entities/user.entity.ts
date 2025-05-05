@@ -19,6 +19,13 @@ export class User {
   @Column()
   name: string;
 
+
+  @Column({type:'varchar',length:50,nullable:true})
+  status: string;
+
+  @Column({type:'varchar',length:100,nullable:true})
+  avatarUrl: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

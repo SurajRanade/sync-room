@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
-import { Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
+import { UserDto } from '../connection-request/dto/create-connection-request.dto';
+import { ConnectionRequest } from '../connection-request/entities/connection-request.entity';
+import { UserConnection } from '../user-connections/entities/user-connection.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
 
@@ -13,10 +16,15 @@ export class UserService {
     private readonly configService: ConfigService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(UserConnection)
+    private readonly userConnectionRepository: Repository<UserConnection>,
+
+    @InjectRepository(ConnectionRequest)
+    private readonly connectionRequestRepository: Repository<ConnectionRequest>,
   ) {}
 
   async register(createUserDto: CreateUserDto) {
-    const { email, phoneNumber, password, name } = createUserDto;
+    const { email, phoneNumber, password, name,status } = createUserDto;
 
     const existingUser = await this.userRepository.findOne({ where: [{ email }, { phoneNumber }] });
     if (existingUser) {
@@ -30,6 +38,7 @@ export class UserService {
       phoneNumber,
       password: hashedPassword,
       name,
+      status
     });
 
     await this.userRepository.save(user);
@@ -58,6 +67,80 @@ export class UserService {
 
     return { access_token: token };
   }
+
+
+  //This Function Return an array of employee Object which User can add;
+  async getFriendsToAdd(user: UserDto) {
+    const userId = user.userId;
+  
+    // Step 1: Get current friends
+    const currentFriendIds = await this.getLoggedInUsersFriendIds(userId);
+  
+    // Step 2: Get pending requests (both sent and received)
+    const pendingRequests = await this.connectionRequestRepository.find({
+      where: [
+        { sender: { userId } },
+        { receiver: { userId } }
+      ],
+      relations: ['sender', 'receiver'],
+      select: {
+        sender: { userId: true },
+        receiver: { userId: true }
+      }
+    });
+  
+    const pendingIds = pendingRequests.flatMap(req => [
+      req.sender.userId === userId ? req.receiver.userId : req.sender.userId
+    ]);
+  
+    // Step 3: Combine all to exclude (friends, pending requests, and self)
+    const excludeIds = Array.from(new Set([...currentFriendIds, ...pendingIds, userId]));
+  
+    // Step 4: Query for people you may know
+    const friendsToAdd = await this.userRepository.find({
+      where: {
+        userId: Not(In(excludeIds))
+      },
+      select: {
+        userId: true,
+        name: true,
+        email: true,
+        status: true,
+        avatarUrl: true
+      }
+    });
+  
+    return friendsToAdd;
+  }
+  
+    //This Function returns the loggedIn Users Friend's Ids
+    async getLoggedInUsersFriendIds(userId:number){
+     let availableFriends= await this.userConnectionRepository.find({
+        relations:{
+          user:true,
+          connectedUser:true
+        },
+        where:{
+          user:{
+            userId:userId
+          }
+        },
+        select:{
+          connectionId:true,
+          user:{
+            userId:true,
+          },
+          connectedUser:{
+            userId:true
+          }
+        }
+      })
+
+      let userfriendId = availableFriends.map((item)=>item.connectedUser.userId)
+
+      return userfriendId
+    
+    }
 
   
 }

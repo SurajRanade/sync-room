@@ -9,4 +9,6 @@ export class CreateUserDto {
   phoneNumber: string;
 
   password: string;
+
+  status?:string
 }

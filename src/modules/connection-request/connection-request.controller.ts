@@ -31,6 +31,13 @@ export class ConnectionRequestController {
     return this.connectionRequestService.rejectConnectionRequest(requestId);
   }
 
+  @Get('get-users-pending-requests')
+  @UseGuards(JwtAuthGuard) 
+  async getUsersPendingRequest(@CurrentUser()user:UserDto) {
+    return this.connectionRequestService.getUsersPendingRequest(user);
+  }
+
+
   @Post('send')
   @UseGuards(JwtAuthGuard)
   async sendConnectionRequest(
